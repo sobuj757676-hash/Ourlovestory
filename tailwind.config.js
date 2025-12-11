@@ -1,0 +1,21 @@
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  theme: {
+    extend: {
+      animation: {
+        'bounce-slow': 'bounce-slow 2s infinite',
+      },
+      keyframes: {
+        'bounce-slow': {
+          '0%, 100%': { transform: 'translateY(-5%)' },
+          '50%': { transform: 'translateY(5%)' },
+        }
+      }
+    },
+  },
+  plugins: [],
+}
