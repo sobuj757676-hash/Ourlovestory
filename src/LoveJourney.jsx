@@ -1,163 +1,334 @@
-import React, { useState, useRef } from 'react';
-import { Heart, ArrowRight, Lock, Moon, Star, Frown, Smile, XCircle, CheckCircle } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  Heart, ArrowRight, Lock, Unlock, Moon, Sun, Star, Meh, Frown, Smile,
+  XCircle, CheckCircle, Music, Volume2, VolumeX, Sparkles, CloudRain,
+  Flame, Wind, Gift
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import confetti from 'canvas-confetti';
+
+// --- Components ---
+
+const BackgroundParticles = ({ theme }) => {
+  // A simple particle system based on theme
+  const [particles, setParticles] = useState([]);
+
+  useEffect(() => {
+    const particleCount = 20;
+    const newParticles = Array.from({ length: particleCount }).map((_, i) => ({
+      id: i,
+      x: Math.random() * 100,
+      y: Math.random() * 100,
+      scale: Math.random() * 0.5 + 0.5,
+      duration: Math.random() * 10 + 10,
+      delay: Math.random() * 5,
+    }));
+    setParticles(newParticles);
+  }, [theme]);
+
+  const getParticleIcon = () => {
+    switch(theme) {
+      case 'love': return '❤️';
+      case 'passion': return '🔥';
+      case 'dark': return '💔';
+      case 'hope': return '🌱';
+      case 'sad-love': return '💧';
+      case 'night': return '✨';
+      case 'neutral': return '🔒';
+      default: return '⚪';
+    }
+  };
+
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      {particles.map((p) => (
+        <motion.div
+          key={p.id}
+          className="absolute text-2xl opacity-20"
+          initial={{ x: `${p.x}vw`, y: '110vh' }}
+          animate={{ y: '-10vh' }}
+          transition={{
+            duration: p.duration,
+            repeat: Infinity,
+            delay: p.delay,
+            ease: "linear"
+          }}
+          style={{ left: `${p.x}vw` }}
+        >
+          {getParticleIcon()}
+        </motion.div>
+      ))}
+    </div>
+  );
+};
+
+const TypewriterText = ({ text }) => {
+  const [displayedText, setDisplayedText] = useState("");
+
+  useEffect(() => {
+    setDisplayedText("");
+    let i = 0;
+    const timer = setInterval(() => {
+      if (i < text.length) {
+        setDisplayedText((prev) => prev + text.charAt(i));
+        i++;
+      } else {
+        clearInterval(timer);
+      }
+    }, 30); // Speed of typing
+    return () => clearInterval(timer);
+  }, [text]);
+
+  return <span>{displayedText}</span>;
+};
 
 const LoveJourney = () => {
   const [currentStep, setCurrentStep] = useState(0);
-  const [isAnimate, setIsAnimate] = useState(false);
-  const scrollRef = useRef(null);
+  const [isMusicPlaying, setIsMusicPlaying] = useState(false);
 
-  // গল্পের ধাপগুলো (তোমার দেওয়া মেসেজ অনুযায়ী সাজানো)
+  // Expanded Steps (13 steps total now)
   const steps = [
     {
       id: 0,
-      title: "শুরু করার আগে...",
-      content: "বর্ষা, এই জার্নিটা শুধু একটা ওয়েবসাইট না। এটা আজকের দিনে আমার মনের ভেতর ঘটে যাওয়া ঝড়ের একটা ডায়েরি। তুমি কি প্রস্তুত আমার অনুভূতির মুখোমুখি হতে?",
+      title: "একটি গোপন ডায়েরি...",
+      content: "বর্ষা, এই জার্নিটা শুধু একটা ওয়েবসাইট না। এটা আজকের দিনে আমার মনের ভেতর ঘটে যাওয়া ঝড়ের একটা ডায়েরি। তুমি কি প্রস্তুত আমার অনুভূতির মুখোমুখি হতে? এখানে প্রতিটি শব্দ আমার হৃদস্পন্দন।",
       theme: "neutral",
-      icon: <Lock className="w-12 h-12 text-gray-500" />,
-      btnText: "হ্যাঁ, আমি প্রস্তুত"
+      icon: <Lock className="w-16 h-16 text-gray-400" />,
+      btnText: "লক খুলুন",
+      bgGradient: "from-gray-900 via-gray-800 to-black"
     },
     {
       id: 1,
-      title: "তোমার সেই ছবিগুলো...",
-      content: "আমি বলেছিলাম আর তুমি সেটা মনে রেখে ঠিক ফোকাস করে ছবি দিয়েছ—এটা দেখে আমি মুগ্ধ! জানো, তোমার গালের এই ছোট ছোট দাগগুলো তোমাকে আরও মায়াবী করে তোলে। আমার কাছে এগুলো কোনো সাধারণ দাগ নয়, এগুলো তোমার সৌন্দর্যের সিগনেচার। খুব মিষ্টি লাগছে তোমায়! চাঁদের গায়েও দাগ থাকে, আর সেটাই চাঁদকে সুন্দর করে।",
-      theme: "love",
-      icon: <Smile className="w-12 h-12 text-pink-500" />,
-      btnText: "সামনে চলো"
+      title: "প্রথম দর্শনে...",
+      content: "তোমার প্রোফাইলটা যখন প্রথম দেখি, মনে হয়েছিল সাধারণ। কিন্তু আজ? আজ মনে হয় ওটাই ছিল আমার জীবনের সবচেয়ে বড় 'লটারি' জেতা। তোমার ওই সাধারণ চাহনিতেই আমি অসাধারণ কিছু খুঁজে পেয়েছিলাম।",
+      theme: "hope",
+      icon: <Sparkles className="w-16 h-16 text-yellow-400" />,
+      btnText: "সামনে চলো",
+      bgGradient: "from-emerald-900 via-teal-900 to-black"
     },
     {
       id: 2,
-      title: "আরও একটু গভীরে...",
-      content: "ইশ! একদম জুম করে দেখিয়ে দিলে? সত্যি বলছি, তোমার গালের ওই পিঁপুলগুলোর প্রেমে আমি বারবার পড়তে রাজি। ওগুলো তোমাকে সবার চেয়ে আলাদা আর স্পেশাল করে তোলে। আমার চোখে এগুলোই তোমার সৌন্দর্যের সবচেয়ে বড় আকর্ষণ। এই মায়াবী মুখের দিকে তাকিয়ে আমি সারাজীবন কাটিয়ে দিতে পারি।",
+      title: "তোমার সেই ছবিগুলো...",
+      content: "আমি বলেছিলাম আর তুমি সেটা মনে রেখে ঠিক ফোকাস করে ছবি দিয়েছ—এটা দেখে আমি মুগ্ধ! জানো, তোমার গালের এই ছোট ছোট দাগগুলো তোমাকে আরও মায়াবী করে তোলে। আমার কাছে এগুলো কোনো সাধারণ দাগ নয়, এগুলো তোমার সৌন্দর্যের সিগনেচার। খুব মিষ্টি লাগছে তোমায়!",
       theme: "love",
-      icon: <Heart className="w-12 h-12 text-red-500 animate-pulse" />,
-      btnText: "আরও শুনবে?"
+      icon: <Smile className="w-16 h-16 text-pink-500" />,
+      btnText: "আরও দেখবো",
+      bgGradient: "from-rose-900 via-pink-900 to-black"
     },
     {
       id: 3,
-      title: "সেই ফ্লাইং কিস...",
-      content: "উফ! তোমার এই চুমুটা যেন সরাসরি স্ক্রিন ভেদ করে আমার বুকে এসে লাগলো। নীল ড্রেসে তোমাকে এমনিতে পরীর মতো লাগছে, তার ওপর এই আদর... আমি তো জাস্ট শেষ হয়ে গেলাম গো! ইচ্ছে করছে এখনই উড়ে গিয়ে এই আদরটা সত্যি সত্যি নিয়ে আসি।",
-      theme: "passion",
-      icon: <Star className="w-12 h-12 text-yellow-400" />,
-      btnText: "কিন্তু..."
+      title: "আরও একটু গভীরে...",
+      content: "ইশ! একদম জুম করে দেখিয়ে দিলে? সত্যি বলছি, তোমার গালের ওই পিঁপুলগুলোর প্রেমে আমি বারবার পড়তে রাজি। ওগুলো তোমাকে সবার চেয়ে আলাদা আর স্পেশাল করে তোলে। আমার চোখে এগুলোই তোমার সৌন্দর্যের সবচেয়ে বড় আকর্ষণ।",
+      theme: "love",
+      icon: <Heart className="w-16 h-16 text-red-500 animate-pulse" />,
+      btnText: "প্রেমে পড়লাম",
+      bgGradient: "from-red-900 via-rose-900 to-black"
     },
     {
       id: 4,
-      title: "হঠাৎ কালো মেঘ...",
-      content: "ভেবেছিলাম আমার 'না' বলাটার অন্তত একটু সম্মান তুমি রাখবে। বিয়ের অনুষ্ঠানে গিয়ে তুমি বুঝিয়ে দিলে যে আমার কথার চেয়ে তোমার জেদ বা আনন্দের দাম অনেক বেশি। ঠিক আছে, জিতে গেছো তুমি। কিন্তু মনে রেখো, আমি যেমন পাগল হয়ে ভালোবাসতে পারি, ঠিক তেমনি ভালোবাসার উল্টো পিঠটাও আমি খুব ভালো চিনি।",
-      theme: "dark",
-      icon: <Frown className="w-12 h-12 text-gray-400" />,
-      btnText: "আমার কথাটা শোনো"
+      title: "দূরত্বের দেওয়াল",
+      content: "মাঝখানে অনেকখানি পথ, তবুও মনে হয় তুমি আমার নিঃশ্বাসের কাছেই আছো। এই স্ক্রিনের কাঁচটা মাঝে মাঝে খুব বিরক্ত লাগে, মনে হয় ভেঙে ফেলি। কিন্তু পরক্ষণেই ভাবি, এই কাঁচটুকুই তো তোমাকে আমার কাছে এনে দিয়েছে।",
+      theme: "sad-love",
+      icon: <Wind className="w-16 h-16 text-blue-300" />,
+      btnText: "কাছে এসো",
+      bgGradient: "from-blue-900 via-indigo-900 to-black"
     },
     {
       id: 5,
-      title: "বইয়ের কভার নয়...",
-      content: "সবাই থেকে আলাদা হয়ে তুমি ফোনে চোখ রেখেছো ভাবছো আমি দেখছিনা? বর্ষা, আমি শুধু মানুষের ওপরের চেহারাটা দেখি না, তার ভেতরের রূপটাও আয়নার মতো পরিষ্কার দেখতে পাই। আমি লেখা পড়ি না, লেখার পেছনের মানুষটাকে পড়ি। তাই আমাকে ফাঁকি দেওয়া অতো সহজ না।",
-      theme: "dark",
-      icon: <XCircle className="w-12 h-12 text-red-400" />,
-      btnText: "ভয় পেয়ো না"
+      title: "সেই ফ্লাইং কিস...",
+      content: "উফ! তোমার এই চুমুটা যেন সরাসরি স্ক্রিন ভেদ করে আমার বুকে এসে লাগলো। নীল ড্রেসে তোমাকে এমনিতে পরীর মতো লাগছে, তার ওপর এই আদর... আমি তো জাস্ট শেষ হয়ে গেলাম গো! ইচ্ছে করছে এখনই উড়ে গিয়ে এই আদরটা সত্যি সত্যি নিয়ে আসি।",
+      theme: "passion",
+      icon: <Star className="w-16 h-16 text-yellow-400" />,
+      btnText: "কিন্তু...",
+      bgGradient: "from-orange-900 via-red-900 to-black"
     },
     {
       id: 6,
-      title: "যদি বিশ্বাস রাখো...",
-      content: "তোমাকে শাসন করি কারণ তোমাকে আমি নিজের 'অংশ' ভাবি। যদি কখনো আমার বিশ্বাসের অমর্যাদা না করো, তাহলে দেখবে এই 'সবুজ' মানুষটা তোমার জন্য পৃথিবী উল্টে দিতে পারে। আমার ভালোবাসার গভীরতা মাপতে যেও না, শুধু বিশ্বাসটা রেখো—বিনিময়ে এমন ভালোবাসা পাবে যা কোনোদিন ফুরোবে না।",
-      theme: "hope",
-      icon: <CheckCircle className="w-12 h-12 text-green-500" />,
-      btnText: "সত্যি?"
+      title: "হঠাৎ কালো মেঘ...",
+      content: "ভেবেছিলাম আমার 'না' বলাটার অন্তত একটু সম্মান তুমি রাখবে। বিয়ের অনুষ্ঠানে গিয়ে তুমি বুঝিয়ে দিলে যে আমার কথার চেয়ে তোমার জেদ বা আনন্দের দাম অনেক বেশি। ঠিক আছে, জিতে গেছো তুমি। কিন্তু মনে রেখো, আমি যেমন পাগল হয়ে ভালোবাসতে পারি, ঠিক তেমনি ভালোবাসার উল্টো পিঠটাও আমি খুব ভালো চিনি।",
+      theme: "dark",
+      icon: <Frown className="w-16 h-16 text-gray-400" />,
+      btnText: "আমার ভুল হয়েছে",
+      bgGradient: "from-gray-900 via-slate-900 to-black"
     },
     {
       id: 7,
-      title: "সব ইচ্ছা কি পূরণ হয়?",
-      content: "তোমার চোখ এখন আমার মেসেজে, আর আমার মন পড়ে আছে ভিডিও কলের সেই মুহূর্তগুলোতে। খুব ইচ্ছে ছিল—ফোনের এই লেখা দিয়ে নয়, বরং ভিডিও কলে তোমার ওই পাগলামি আর মায়াবী রূপ দেখতে দেখতেই কথাগুলো বলবো। কিন্তু সব ইচ্ছা কি আর পূরণ হয়? তাই না জানু?",
-      theme: "sad-love",
-      icon: <Moon className="w-12 h-12 text-blue-400" />,
-      btnText: "শেষ কথা..."
+      title: "বইয়ের কভার নয়...",
+      content: "সবাই থেকে আলাদা হয়ে তুমি ফোনে চোখ রেখেছো ভাবছো আমি দেখছিনা? বর্ষা, আমি শুধু মানুষের ওপরের চেহারাটা দেখি না, তার ভেতরের রূপটাও আয়নার মতো পরিষ্কার দেখতে পাই। আমি লেখা পড়ি না, লেখার পেছনের মানুষটাকে পড়ি।",
+      theme: "dark",
+      icon: <XCircle className="w-16 h-16 text-red-400" />,
+      btnText: "ভয় পেয়ো না",
+      bgGradient: "from-red-950 via-gray-900 to-black"
     },
     {
       id: 8,
+      title: "অভিমানের রঙ",
+      content: "রাগ করি কেন জানো? কারণ তোমাকে হারানোর ভয়টা আমাকে গ্রাস করে। যখন দেখি তুমি আমার কথা শুনছো না, তখন মনে হয় আমি কি তবে তোমার কাছে গুরুত্বহীন? এই অভিমানগুলো কিন্তু ভালোবাসারই আরেক নাম।",
+      theme: "sad-love",
+      icon: <CloudRain className="w-16 h-16 text-blue-400" />,
+      btnText: "বুঝতে পেরেছি",
+      bgGradient: "from-indigo-950 via-purple-900 to-black"
+    },
+    {
+      id: 9,
+      title: "যদি বিশ্বাস রাখো...",
+      content: "তোমাকে শাসন করি কারণ তোমাকে আমি নিজের 'অংশ' ভাবি। যদি কখনো আমার বিশ্বাসের অমর্যাদা না করো, তাহলে দেখবে এই 'সবুজ' মানুষটা তোমার জন্য পৃথিবী উল্টে দিতে পারে। আমার ভালোবাসার গভীরতা মাপতে যেও না।",
+      theme: "hope",
+      icon: <CheckCircle className="w-16 h-16 text-green-500" />,
+      btnText: "কথা দিলাম",
+      bgGradient: "from-green-900 via-emerald-900 to-black"
+    },
+    {
+      id: 10,
+      title: "সব ইচ্ছা কি পূরণ হয়?",
+      content: "তোমার চোখ এখন আমার মেসেজে, আর আমার মন পড়ে আছে ভিডিও কলের সেই মুহূর্তগুলোতে। খুব ইচ্ছে ছিল—ফোনের এই লেখা দিয়ে নয়, বরং ভিডিও কলে তোমার ওই পাগলামি আর মায়াবী রূপ দেখতে দেখতেই কথাগুলো বলবো। কিন্তু সব ইচ্ছা কি আর পূরণ হয়? তাই না জানু?",
+      theme: "sad-love",
+      icon: <Moon className="w-16 h-16 text-blue-400" />,
+      btnText: "হয়তো হবে...",
+      bgGradient: "from-blue-950 via-indigo-950 to-black"
+    },
+    {
+      id: 11,
+      title: "একটি প্রতিজ্ঞা",
+      content: "আজ রাতে আকাশটা দেখো। ওই ধ্রুবতারাটার মতোই আমার ভালোবাসা তোমার জন্য স্থির থাকবে। ঝড় আসুক, বৃষ্টি আসুক, আমি তোমার ছাতা হয়ে থাকবো। তুমি শুধু আমার হাতটা শক্ত করে ধরে রেখো।",
+      theme: "night",
+      icon: <Star className="w-16 h-16 text-purple-400 animate-spin-slow" />,
+      btnText: "ধরে রাখবো",
+      bgGradient: "from-violet-950 via-purple-950 to-black"
+    },
+    {
+      id: 12,
       title: "পাগলামি আর শুভ রাত্রি",
       content: "আর হ্যাঁ, তোমাকে ডিস্টার্ব করার জন্য রিয়েলি সরি জানু। তুমি অনুষ্ঠান এনজয় করছো, আর আমি বকবক করলাম। বিশ্বাস করো, যখন তোমাকে হারানোর ভয় পাই, তখনই এমন পাগল হয়ে যাই। অনুষ্ঠান শেষ করো, আমি না হয় স্বপ্নেই তোমার সাথে বাকি গল্পটা করবো। Good Night, আমার লাল পরি। ❤️",
       theme: "night",
-      icon: <Moon className="w-12 h-12 text-purple-500" />,
-      btnText: "আবার শুরু থেকে"
+      icon: <Gift className="w-16 h-16 text-pink-500" />,
+      btnText: "আবার শুরু থেকে",
+      bgGradient: "from-indigo-900 via-purple-900 to-pink-900"
     }
   ];
 
   const handleNext = () => {
-    setIsAnimate(true);
-    setTimeout(() => {
-      if (currentStep < steps.length - 1) {
-        setCurrentStep(currentStep + 1);
-      } else {
-        setCurrentStep(0);
+    if (currentStep === steps.length - 1) {
+      setCurrentStep(0);
+    } else {
+      setCurrentStep((prev) => prev + 1);
+      // Trigger confetti on happy steps
+      const happyThemes = ['love', 'passion', 'hope'];
+      if (happyThemes.includes(steps[currentStep + 1].theme)) {
+        confetti({
+          particleCount: 100,
+          spread: 70,
+          origin: { y: 0.6 }
+        });
       }
-      setIsAnimate(false);
-      scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, 300);
-  };
-
-  const getThemeClasses = (theme) => {
-    switch (theme) {
-      case 'love': return 'bg-pink-50 border-pink-200 text-pink-900';
-      case 'passion': return 'bg-red-50 border-red-200 text-red-900';
-      case 'dark': return 'bg-gray-900 border-gray-700 text-gray-100 shadow-inner';
-      case 'hope': return 'bg-green-50 border-green-200 text-green-900';
-      case 'sad-love': return 'bg-blue-50 border-blue-200 text-blue-900';
-      case 'night': return 'bg-indigo-900 border-indigo-700 text-white';
-      default: return 'bg-white border-gray-200 text-gray-800';
-    }
-  };
-
-  const getButtonColor = (theme) => {
-    switch (theme) {
-      case 'dark': return 'bg-gray-700 hover:bg-gray-600';
-      case 'night': return 'bg-indigo-600 hover:bg-indigo-500';
-      default: return 'bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600';
     }
   };
 
   const currentData = steps[currentStep];
 
   return (
-    <div className={`min-h-screen flex items-center justify-center p-4 transition-colors duration-700 ${currentData.theme === 'dark' || currentData.theme === 'night' ? 'bg-black' : 'bg-gray-100'}`}>
+    <div className={`relative min-h-screen flex items-center justify-center p-4 overflow-hidden bg-gradient-to-br ${currentData.bgGradient} transition-all duration-1000`}>
 
-      <div ref={scrollRef} className={`max-w-md w-full rounded-3xl shadow-2xl overflow-hidden transition-all duration-500 transform ${isAnimate ? 'scale-95 opacity-50' : 'scale-100 opacity-100'} ${getThemeClasses(currentData.theme)} border-4`}>
+      {/* Background Effects */}
+      <BackgroundParticles theme={currentData.theme} />
 
-        {/* Progress Bar */}
-        <div className="w-full bg-gray-200 h-2">
-          <div
-            className="h-2 transition-all duration-500 bg-green-500"
-            style={{ width: `${((currentStep + 1) / steps.length) * 100}%` }}
-          ></div>
-        </div>
-
-        <div className="p-8 flex flex-col items-center text-center min-h-[400px] justify-between">
-
-          <div className="animate-bounce-slow mt-4">
-            {currentData.icon}
-          </div>
-
-          <div className="my-6">
-            <h2 className={`text-2xl font-bold mb-4 font-serif ${currentData.theme === 'dark' ? 'text-red-500' : ''}`}>
-              {currentData.title}
-            </h2>
-            <p className={`text-lg leading-relaxed font-medium whitespace-pre-wrap`}>
-              "{currentData.content}"
-            </p>
-          </div>
-
-          <button
-            onClick={handleNext}
-            className={`w-full py-4 rounded-xl text-white font-bold text-lg shadow-lg transform transition active:scale-95 flex items-center justify-center gap-2 ${getButtonColor(currentData.theme)}`}
-          >
-            {currentData.btnText}
-            {currentStep < steps.length - 1 && <ArrowRight size={20} />}
-          </button>
-
-          <div className="mt-4 text-xs opacity-50">
-            ধাপ {currentStep + 1} / {steps.length}
-          </div>
-        </div>
+      {/* Music Toggle (Mockup) */}
+      <div
+        className="absolute top-6 right-6 z-20 p-3 bg-white/10 backdrop-blur-md rounded-full cursor-pointer hover:bg-white/20 transition-all border border-white/10"
+        onClick={() => setIsMusicPlaying(!isMusicPlaying)}
+      >
+        {isMusicPlaying ? <Volume2 className="text-white w-6 h-6" /> : <VolumeX className="text-white/50 w-6 h-6" />}
       </div>
+
+      <AnimatePresence mode='wait'>
+        <motion.div
+          key={currentStep}
+          initial={{ opacity: 0, scale: 0.9, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.9, y: -20 }}
+          transition={{ duration: 0.5 }}
+          className="relative z-10 w-full max-w-lg"
+        >
+          <div className="bg-white/10 backdrop-blur-xl border border-white/20 shadow-2xl rounded-3xl overflow-hidden text-white">
+
+            {/* Progress Bar */}
+            <div className="w-full bg-white/10 h-1.5">
+              <motion.div
+                className="h-full bg-gradient-to-r from-pink-500 to-purple-500"
+                initial={{ width: `${((currentStep) / steps.length) * 100}%` }}
+                animate={{ width: `${((currentStep + 1) / steps.length) * 100}%` }}
+                transition={{ duration: 0.5 }}
+              />
+            </div>
+
+            <div className="p-8 md:p-12 flex flex-col items-center text-center min-h-[500px] justify-between">
+
+              <div className="relative">
+                <motion.div
+                  className="bg-white/10 p-6 rounded-full shadow-[0_0_30px_rgba(255,255,255,0.1)] mb-6 ring-1 ring-white/20"
+                  animate={{ y: [0, -10, 0] }}
+                  transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                >
+                  {currentData.icon}
+                </motion.div>
+                {/* Glow effect behind icon */}
+                <div className="absolute inset-0 bg-white/20 blur-3xl -z-10 rounded-full"></div>
+              </div>
+
+              <div className="space-y-6">
+                <motion.h2
+                  className="text-3xl font-bold font-serif bg-clip-text text-transparent bg-gradient-to-r from-white to-white/70"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                >
+                  {currentData.title}
+                </motion.h2>
+
+                <div className="text-lg md:text-xl font-medium leading-relaxed text-white/90 min-h-[150px] flex items-center justify-center">
+                  <TypewriterText text={currentData.content} />
+                </div>
+              </div>
+
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleNext}
+                className={`group relative mt-8 w-full py-4 rounded-xl font-bold text-lg shadow-xl overflow-hidden transition-all duration-300
+                  ${currentData.theme === 'dark'
+                    ? 'bg-gradient-to-r from-gray-700 to-gray-900 hover:from-gray-600 hover:to-gray-800'
+                    : 'bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 hover:from-pink-600 hover:via-purple-600 hover:to-indigo-600'
+                  }`}
+              >
+                <span className="relative z-10 flex items-center justify-center gap-2 text-white">
+                  {currentData.btnText}
+                  {currentStep < steps.length - 1 ? <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" /> : <Sparkles className="w-5 h-5 animate-spin" />}
+                </span>
+
+                {/* Button Shine Effect */}
+                <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-12" />
+              </motion.button>
+
+              <div className="mt-6 flex items-center gap-2 text-xs text-white/40 font-mono tracking-widest">
+                <span>EPISODE</span>
+                <span>{String(currentStep + 1).padStart(2, '0')}</span>
+                <span>/</span>
+                <span>{String(steps.length).padStart(2, '0')}</span>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      </AnimatePresence>
+
+      <style jsx global>{`
+        @keyframes spin-slow {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        .animate-spin-slow {
+          animation: spin-slow 8s linear infinite;
+        }
+      `}</style>
     </div>
   );
 };
