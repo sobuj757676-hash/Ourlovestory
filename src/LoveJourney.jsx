@@ -13,10 +13,6 @@ const getDaysPassed = (startDate) => {
   const start = new Date(startDate);
   const now = new Date();
 
-  // Reset hours to compare just dates roughly, or use strict 24h intervals.
-  // Using strict 24h from 6 AM logic or just "Calendar Days"?
-  // Let's use Calendar Days to ensure "Next Morning" works.
-
   const startDay = new Date(start.getFullYear(), start.getMonth(), start.getDate());
   const currentDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
@@ -69,6 +65,7 @@ const BackgroundParticles = ({ theme }) => {
       case 'sad-love': return '💧';
       case 'night': return '✨';
       case 'neutral': return '🔒';
+      case 'rain': return '🌧️';
       default: return '⚪';
     }
   };
@@ -109,7 +106,7 @@ const TypewriterText = ({ text }) => {
       } else {
         clearInterval(timer);
       }
-    }, 20); // Faster typing
+    }, 30);
     return () => clearInterval(timer);
   }, [text]);
 
@@ -127,46 +124,174 @@ const CountdownTimer = () => {
   }, []);
 
   return (
-    <div className="font-mono text-xl md:text-3xl font-bold tracking-widest text-pink-300">
+    <div className="font-mono text-xl md:text-3xl font-bold tracking-widest text-emerald-300">
       {formatTime(timeLeft)}
     </div>
   );
 };
 
+// --- Entrance Screen Component ---
+const EntranceScreen = ({ onUnlock }) => {
+  const [holding, setHolding] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const intervalRef = useRef(null);
+
+  const startHolding = () => {
+    setHolding(true);
+    intervalRef.current = setInterval(() => {
+      setProgress((prev) => {
+        if (prev >= 100) {
+          clearInterval(intervalRef.current);
+          return 100;
+        }
+        return prev + 2;
+      });
+    }, 30);
+  };
+
+  const stopHolding = () => {
+    setHolding(false);
+    clearInterval(intervalRef.current);
+    if (progress < 100) setProgress(0);
+  };
+
+  useEffect(() => {
+    if (progress >= 100) {
+      // Success Haptic/Visual Feedback
+      confetti({
+        particleCount: 150,
+        spread: 100,
+        origin: { y: 0.5 },
+        colors: ['#10b981', '#ec4899', '#ffffff'] // Emerald, Pink, White
+      });
+      setTimeout(onUnlock, 1200);
+    }
+  }, [progress, onUnlock]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center overflow-hidden select-none"
+      onMouseDown={startHolding}
+      onMouseUp={stopHolding}
+      onTouchStart={startHolding}
+      onTouchEnd={stopHolding}
+    >
+      {/* Mystical Background */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-emerald-900/40 via-black to-black animate-pulse"></div>
+      <BackgroundParticles theme="night" />
+
+      <motion.div
+        className="relative z-10 flex flex-col items-center justify-center space-y-12"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 1 }}
+      >
+        <div className="text-center space-y-2 pointer-events-none">
+          <motion.h2
+            className="text-emerald-400/80 tracking-[0.5em] text-sm uppercase font-light"
+            animate={{ opacity: [0.5, 1, 0.5] }}
+            transition={{ duration: 3, repeat: Infinity }}
+          >
+            সুরক্ষিত এলাকা
+          </motion.h2>
+          <h1 className="text-3xl md:text-4xl font-serif text-white/90">
+            সবুজের বর্ষা
+          </h1>
+          <p className="text-white/40 text-xs tracking-widest mt-2">লুকানো ডায়েরি</p>
+        </div>
+
+        {/* Heart Interaction */}
+        <div className="relative cursor-pointer group">
+          {/* Progress Ring */}
+          <svg className="w-40 h-40 transform -rotate-90">
+            <circle
+              cx="80"
+              cy="80"
+              r="70"
+              stroke="currentColor"
+              strokeWidth="4"
+              fill="transparent"
+              className="text-white/10"
+            />
+            <motion.circle
+              cx="80"
+              cy="80"
+              r="70"
+              stroke="currentColor"
+              strokeWidth="4"
+              fill="transparent"
+              className="text-emerald-500 drop-shadow-[0_0_10px_rgba(16,185,129,0.8)]"
+              strokeDasharray="440"
+              strokeDashoffset={440 - (440 * progress) / 100}
+              initial={{ strokeDashoffset: 440 }}
+            />
+          </svg>
+
+          {/* Heart Icon */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <motion.div
+              animate={{
+                scale: holding ? [1, 1.2, 1] : [1, 1.1, 1],
+                filter: progress === 100 ? "brightness(1.5)" : "brightness(1)"
+              }}
+              transition={{
+                duration: holding ? 0.3 : 1.5,
+                repeat: Infinity,
+                ease: "easeInOut"
+              }}
+            >
+              <Heart
+                fill={progress === 100 ? "#10b981" : holding ? "#ec4899" : "none"}
+                className={`w-16 h-16 ${holding ? 'text-pink-500' : 'text-emerald-500/50'} transition-colors duration-500`}
+              />
+            </motion.div>
+          </div>
+
+          <div className="absolute -bottom-12 left-0 right-0 text-center pointer-events-none">
+             <motion.span
+               className="text-xs text-emerald-200/60 tracking-wider"
+               animate={{ opacity: holding ? 1 : 0.5 }}
+             >
+               {progress === 100 ? "স্বাগতম..." : "ধরে রাখুন..."}
+             </motion.span>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
 const LoveJourney = () => {
+  const [hasEntered, setHasEntered] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [isMusicPlaying, setIsMusicPlaying] = useState(false);
 
   // State for Daily Unlock System
   const [unlockedDays, setUnlockedDays] = useState(1);
   const [showLockedScreen, setShowLockedScreen] = useState(false);
-  const [devModeDays, setDevModeDays] = useState(0); // For testing/demo purposes
+  const [devModeDays, setDevModeDays] = useState(0);
 
-  // Initial Logic on Mount
   useEffect(() => {
-    // Check local storage for start date
     let storedStart = localStorage.getItem('loveJourneyStartDate');
     if (!storedStart) {
       storedStart = new Date().toISOString();
       localStorage.setItem('loveJourneyStartDate', storedStart);
     }
 
-    // Calculate days passed (0 indexed, so day 0 is 1st day)
     const days = getDaysPassed(storedStart);
-    setUnlockedDays(days + 1 + devModeDays); // +1 because Day 1 is the start
+    setUnlockedDays(days + 1 + devModeDays);
 
   }, [devModeDays]);
-
 
   const steps = [
     {
       id: 0,
-      title: "একটি গোপন ডায়েরি...",
-      content: "বর্ষা, এই জার্নিটা শুধু একটা ওয়েবসাইট না। এটা আজকের দিনে আমার মনের ভেতর ঘটে যাওয়া ঝড়ের একটা ডায়েরি। তুমি কি প্রস্তুত আমার অনুভূতির মুখোমুখি হতে? এখানে প্রতিদিন একটি করে পাতা খুলবে।",
-      theme: "neutral",
-      icon: <Lock className="w-16 h-16 text-gray-400" />,
-      btnText: "লক খুলুন",
-      bgGradient: "from-gray-900 via-gray-800 to-black"
+      title: "সবুজের বর্ষা...",
+      content: "বর্ষা, এটা শুধু একটা নাম নয়, এটা একটা অনুভূতি। আমার রুক্ষ জীবনে তুমি সেই বৃষ্টির মতো, যা সবুজের ছোঁয়া নিয়ে আসে। এই ডায়েরিটা শুধু তোমার জন্য। আমার মনের সব না বলা কথা এখানে জমা করে রাখলাম।",
+      theme: "rain",
+      icon: <CloudRain className="w-16 h-16 text-emerald-400" />,
+      btnText: "প্রথম পাতা",
+      bgGradient: "from-emerald-950 via-teal-900 to-black"
     },
     {
       id: 1,
@@ -175,7 +300,7 @@ const LoveJourney = () => {
       theme: "hope",
       icon: <Sparkles className="w-16 h-16 text-yellow-400" />,
       btnText: "সামনে চলো",
-      bgGradient: "from-emerald-900 via-teal-900 to-black"
+      bgGradient: "from-teal-900 via-emerald-900 to-black"
     },
     {
       id: 2,
@@ -184,7 +309,7 @@ const LoveJourney = () => {
       theme: "love",
       icon: <Smile className="w-16 h-16 text-pink-500" />,
       btnText: "আরও দেখবো",
-      bgGradient: "from-rose-900 via-pink-900 to-black"
+      bgGradient: "from-rose-950 via-pink-900 to-black"
     },
     {
       id: 3,
@@ -193,7 +318,7 @@ const LoveJourney = () => {
       theme: "love",
       icon: <Heart className="w-16 h-16 text-red-500 animate-pulse" />,
       btnText: "প্রেমে পড়লাম",
-      bgGradient: "from-red-900 via-rose-900 to-black"
+      bgGradient: "from-red-950 via-rose-900 to-black"
     },
     {
       id: 4,
@@ -202,7 +327,7 @@ const LoveJourney = () => {
       theme: "sad-love",
       icon: <Wind className="w-16 h-16 text-blue-300" />,
       btnText: "কাছে এসো",
-      bgGradient: "from-blue-900 via-indigo-900 to-black"
+      bgGradient: "from-blue-950 via-indigo-900 to-black"
     },
     {
       id: 5,
@@ -211,7 +336,7 @@ const LoveJourney = () => {
       theme: "passion",
       icon: <Star className="w-16 h-16 text-yellow-400" />,
       btnText: "কিন্তু...",
-      bgGradient: "from-orange-900 via-red-900 to-black"
+      bgGradient: "from-orange-950 via-red-900 to-black"
     },
     {
       id: 6,
@@ -220,7 +345,7 @@ const LoveJourney = () => {
       theme: "dark",
       icon: <Frown className="w-16 h-16 text-gray-400" />,
       btnText: "আমার ভুল হয়েছে",
-      bgGradient: "from-gray-900 via-slate-900 to-black"
+      bgGradient: "from-gray-950 via-slate-900 to-black"
     },
     {
       id: 7,
@@ -247,7 +372,7 @@ const LoveJourney = () => {
       theme: "hope",
       icon: <CheckCircle className="w-16 h-16 text-green-500" />,
       btnText: "কথা দিলাম",
-      bgGradient: "from-green-900 via-emerald-900 to-black"
+      bgGradient: "from-green-950 via-emerald-900 to-black"
     },
     {
       id: 10,
@@ -279,20 +404,7 @@ const LoveJourney = () => {
   ];
 
   const handleNext = () => {
-    // Logic: If next step is >= unlockedDays, show Locked Screen
     const nextStepIndex = currentStep + 1;
-
-    // Check if we are trying to access a locked step
-    // steps[0] is intro (always open). steps[1] is Day 1.
-    // So if currentStep is 0, we are going to 1.
-    // If unlockedDays is 1, we can see steps[0] and steps[1].
-
-    // Mapping:
-    // Step 0: Intro (Always unlocked)
-    // Step 1: Day 1
-    // Step 2: Day 2
-    // ...
-    // So if unlockedDays = 1, max index allowed is 1.
 
     if (nextStepIndex > unlockedDays) {
       setShowLockedScreen(true);
@@ -302,13 +414,11 @@ const LoveJourney = () => {
     if (currentStep < steps.length - 1) {
       setCurrentStep((prev) => prev + 1);
 
-      // Trigger confetti on happy themes
-      const happyThemes = ['love', 'passion', 'hope'];
+      const happyThemes = ['love', 'passion', 'hope', 'rain'];
       if (happyThemes.includes(steps[nextStepIndex].theme)) {
         confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
       }
     } else {
-      // End of content loop or show a 'wait for update' message
       setCurrentStep(0);
     }
   };
@@ -320,12 +430,17 @@ const LoveJourney = () => {
 
   const currentData = steps[currentStep];
 
+  // --- Show Entrance Screen First ---
+  if (!hasEntered) {
+    return <EntranceScreen onUnlock={() => setHasEntered(true)} />;
+  }
+
   // --- Locked Screen Render ---
   if (showLockedScreen) {
     const nextEpisode = steps[currentStep + 1];
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-black text-white relative overflow-hidden">
-        <BackgroundParticles theme="night" />
+        <BackgroundParticles theme="rain" />
 
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
@@ -334,7 +449,7 @@ const LoveJourney = () => {
         >
           <div className="relative">
             <div className="absolute inset-0 flex items-center justify-center z-20">
-              <Lock className="w-24 h-24 text-pink-500 drop-shadow-[0_0_15px_rgba(236,72,153,0.5)]" />
+              <Lock className="w-24 h-24 text-emerald-500 drop-shadow-[0_0_15px_rgba(16,185,129,0.5)]" />
             </div>
             <div className="blur-xl opacity-30 pointer-events-none grayscale">
               {nextEpisode?.icon}
@@ -342,29 +457,33 @@ const LoveJourney = () => {
           </div>
 
           <div>
-            <h2 className="text-xl text-pink-200 font-serif mb-2">পরবর্তী এপিসোড</h2>
-            <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-pink-400 to-purple-600">
+            <h2 className="text-xl text-emerald-200/80 font-serif mb-2">পরবর্তী এপিসোড লোড হচ্ছে...</h2>
+            <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-teal-600">
               {nextEpisode?.title || "???"}
             </h1>
           </div>
 
-          <div className="bg-white/5 backdrop-blur-lg border border-white/10 p-8 rounded-2xl">
-            <p className="text-gray-400 mb-4 text-sm uppercase tracking-widest">Available in</p>
+          <div className="bg-white/5 backdrop-blur-lg border border-white/10 p-8 rounded-2xl ring-1 ring-emerald-500/20">
+            <p className="text-emerald-400/60 mb-4 text-sm uppercase tracking-widest">খুলতে বাকি</p>
             <CountdownTimer />
           </div>
 
-          <p className="text-lg text-gray-300 italic font-medium">
-            "সবুর করো জানু, সকালের সূর্য এই গল্পটা নিয়ে আসবে..."
-          </p>
+          <div className="space-y-2">
+             <p className="text-lg text-gray-300 italic font-medium">
+               "অপেক্ষা করো বর্ষা, ভালোবাসার গল্পে তাড়াহুড়ো করতে নেই..."
+             </p>
+             <p className="text-sm text-gray-500">
+               কাল সকাল ৬টায় আবার দেখা হবে
+             </p>
+          </div>
 
           <button
             onClick={() => setShowLockedScreen(false)}
-            className="mt-8 text-sm text-gray-500 hover:text-white transition-colors underline"
+            className="mt-8 text-sm text-emerald-500/80 hover:text-emerald-400 transition-colors underline"
           >
             আগের পাতায় ফিরে যাও
           </button>
 
-          {/* Dev Tool: Hidden in bottom corner mostly */}
           <button
              onClick={handleDevTimeTravel}
              className="fixed bottom-2 right-2 text-[10px] text-gray-800 hover:text-gray-600 bg-white/10 px-2 py-1 rounded"
@@ -404,13 +523,13 @@ const LoveJourney = () => {
 
             {/* Day Badge */}
             <div className="absolute top-4 left-4 bg-black/30 backdrop-blur-md px-3 py-1 rounded-full text-xs font-mono border border-white/10 text-white/70">
-              {currentStep === 0 ? 'INTRO' : `DAY ${currentStep}`}
+              {currentStep === 0 ? 'SOBUJER BORSHA' : `EPISODE ${currentStep}`}
             </div>
 
             {/* Progress Bar */}
             <div className="w-full bg-white/10 h-1.5 absolute top-0 left-0">
               <motion.div
-                className="h-full bg-gradient-to-r from-pink-500 to-purple-500"
+                className="h-full bg-gradient-to-r from-emerald-500 to-teal-500"
                 initial={{ width: `${((currentStep) / steps.length) * 100}%` }}
                 animate={{ width: `${((currentStep + 1) / steps.length) * 100}%` }}
                 transition={{ duration: 0.5 }}
@@ -432,7 +551,7 @@ const LoveJourney = () => {
 
               <div className="space-y-6">
                 <motion.h2
-                  className="text-3xl font-bold font-serif bg-clip-text text-transparent bg-gradient-to-r from-white to-white/70"
+                  className="text-3xl font-bold font-serif bg-clip-text text-transparent bg-gradient-to-r from-emerald-100 to-white"
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.2 }}
@@ -452,14 +571,14 @@ const LoveJourney = () => {
                 className={`group relative mt-8 w-full py-4 rounded-xl font-bold text-lg shadow-xl overflow-hidden transition-all duration-300
                   ${currentData.theme === 'dark'
                     ? 'bg-gradient-to-r from-gray-700 to-gray-900 hover:from-gray-600 hover:to-gray-800'
-                    : 'bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 hover:from-pink-600 hover:via-purple-600 hover:to-indigo-600'
+                    : 'bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 hover:from-emerald-700 hover:via-teal-700 hover:to-cyan-700'
                   }`}
               >
                 <span className="relative z-10 flex items-center justify-center gap-2 text-white">
                   {/* Logic for Button Text: If next step is locked, show "See Tomorrow" */}
                   {(currentStep + 1) > unlockedDays ? (
                     <>
-                      আগামীকালের জন্য অপেক্ষা <Clock className="w-5 h-5" />
+                      পরের এপিসোড <Lock className="w-5 h-5" />
                     </>
                   ) : (
                     <>
