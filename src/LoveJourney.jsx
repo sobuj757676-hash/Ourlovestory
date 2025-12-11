@@ -2,15 +2,49 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Heart, ArrowRight, Lock, Unlock, Moon, Sun, Star, Meh, Frown, Smile,
   XCircle, CheckCircle, Music, Volume2, VolumeX, Sparkles, CloudRain,
-  Flame, Wind, Gift
+  Flame, Wind, Gift, Clock, Calendar
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
 
+// --- Helper Functions ---
+
+const getDaysPassed = (startDate) => {
+  const start = new Date(startDate);
+  const now = new Date();
+
+  // Reset hours to compare just dates roughly, or use strict 24h intervals.
+  // Using strict 24h from 6 AM logic or just "Calendar Days"?
+  // Let's use Calendar Days to ensure "Next Morning" works.
+
+  const startDay = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+  const currentDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  const diffTime = Math.abs(currentDay - startDay);
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  return diffDays;
+};
+
+const getTimeUntilNextMorning = () => {
+  const now = new Date();
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  tomorrow.setHours(6, 0, 0, 0); // 6:00 AM
+
+  return tomorrow - now;
+};
+
+const formatTime = (ms) => {
+  const seconds = Math.floor((ms / 1000) % 60);
+  const minutes = Math.floor((ms / (1000 * 60)) % 60);
+  const hours = Math.floor((ms / (1000 * 60 * 60)) % 24);
+  return `${hours}h ${minutes}m ${seconds}s`;
+};
+
 // --- Components ---
 
 const BackgroundParticles = ({ theme }) => {
-  // A simple particle system based on theme
   const [particles, setParticles] = useState([]);
 
   useEffect(() => {
@@ -75,23 +109,60 @@ const TypewriterText = ({ text }) => {
       } else {
         clearInterval(timer);
       }
-    }, 30); // Speed of typing
+    }, 20); // Faster typing
     return () => clearInterval(timer);
   }, [text]);
 
   return <span>{displayedText}</span>;
 };
 
+const CountdownTimer = () => {
+  const [timeLeft, setTimeLeft] = useState(getTimeUntilNextMorning());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTimeLeft(getTimeUntilNextMorning());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div className="font-mono text-xl md:text-3xl font-bold tracking-widest text-pink-300">
+      {formatTime(timeLeft)}
+    </div>
+  );
+};
+
 const LoveJourney = () => {
   const [currentStep, setCurrentStep] = useState(0);
   const [isMusicPlaying, setIsMusicPlaying] = useState(false);
 
-  // Expanded Steps (13 steps total now)
+  // State for Daily Unlock System
+  const [unlockedDays, setUnlockedDays] = useState(1);
+  const [showLockedScreen, setShowLockedScreen] = useState(false);
+  const [devModeDays, setDevModeDays] = useState(0); // For testing/demo purposes
+
+  // Initial Logic on Mount
+  useEffect(() => {
+    // Check local storage for start date
+    let storedStart = localStorage.getItem('loveJourneyStartDate');
+    if (!storedStart) {
+      storedStart = new Date().toISOString();
+      localStorage.setItem('loveJourneyStartDate', storedStart);
+    }
+
+    // Calculate days passed (0 indexed, so day 0 is 1st day)
+    const days = getDaysPassed(storedStart);
+    setUnlockedDays(days + 1 + devModeDays); // +1 because Day 1 is the start
+
+  }, [devModeDays]);
+
+
   const steps = [
     {
       id: 0,
       title: "একটি গোপন ডায়েরি...",
-      content: "বর্ষা, এই জার্নিটা শুধু একটা ওয়েবসাইট না। এটা আজকের দিনে আমার মনের ভেতর ঘটে যাওয়া ঝড়ের একটা ডায়েরি। তুমি কি প্রস্তুত আমার অনুভূতির মুখোমুখি হতে? এখানে প্রতিটি শব্দ আমার হৃদস্পন্দন।",
+      content: "বর্ষা, এই জার্নিটা শুধু একটা ওয়েবসাইট না। এটা আজকের দিনে আমার মনের ভেতর ঘটে যাওয়া ঝড়ের একটা ডায়েরি। তুমি কি প্রস্তুত আমার অনুভূতির মুখোমুখি হতে? এখানে প্রতিদিন একটি করে পাতা খুলবে।",
       theme: "neutral",
       icon: <Lock className="w-16 h-16 text-gray-400" />,
       btnText: "লক খুলুন",
@@ -208,31 +279,111 @@ const LoveJourney = () => {
   ];
 
   const handleNext = () => {
-    if (currentStep === steps.length - 1) {
-      setCurrentStep(0);
-    } else {
-      setCurrentStep((prev) => prev + 1);
-      // Trigger confetti on happy steps
-      const happyThemes = ['love', 'passion', 'hope'];
-      if (happyThemes.includes(steps[currentStep + 1].theme)) {
-        confetti({
-          particleCount: 100,
-          spread: 70,
-          origin: { y: 0.6 }
-        });
-      }
+    // Logic: If next step is >= unlockedDays, show Locked Screen
+    const nextStepIndex = currentStep + 1;
+
+    // Check if we are trying to access a locked step
+    // steps[0] is intro (always open). steps[1] is Day 1.
+    // So if currentStep is 0, we are going to 1.
+    // If unlockedDays is 1, we can see steps[0] and steps[1].
+
+    // Mapping:
+    // Step 0: Intro (Always unlocked)
+    // Step 1: Day 1
+    // Step 2: Day 2
+    // ...
+    // So if unlockedDays = 1, max index allowed is 1.
+
+    if (nextStepIndex > unlockedDays) {
+      setShowLockedScreen(true);
+      return;
     }
+
+    if (currentStep < steps.length - 1) {
+      setCurrentStep((prev) => prev + 1);
+
+      // Trigger confetti on happy themes
+      const happyThemes = ['love', 'passion', 'hope'];
+      if (happyThemes.includes(steps[nextStepIndex].theme)) {
+        confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+      }
+    } else {
+      // End of content loop or show a 'wait for update' message
+      setCurrentStep(0);
+    }
+  };
+
+  const handleDevTimeTravel = () => {
+    setDevModeDays(prev => prev + 1);
+    confetti({ particleCount: 50, spread: 40, origin: { y: 0.9 } });
   };
 
   const currentData = steps[currentStep];
 
+  // --- Locked Screen Render ---
+  if (showLockedScreen) {
+    const nextEpisode = steps[currentStep + 1];
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-black text-white relative overflow-hidden">
+        <BackgroundParticles theme="night" />
+
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="max-w-md w-full text-center space-y-8 z-10"
+        >
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center justify-center z-20">
+              <Lock className="w-24 h-24 text-pink-500 drop-shadow-[0_0_15px_rgba(236,72,153,0.5)]" />
+            </div>
+            <div className="blur-xl opacity-30 pointer-events-none grayscale">
+              {nextEpisode?.icon}
+            </div>
+          </div>
+
+          <div>
+            <h2 className="text-xl text-pink-200 font-serif mb-2">পরবর্তী এপিসোড</h2>
+            <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-pink-400 to-purple-600">
+              {nextEpisode?.title || "???"}
+            </h1>
+          </div>
+
+          <div className="bg-white/5 backdrop-blur-lg border border-white/10 p-8 rounded-2xl">
+            <p className="text-gray-400 mb-4 text-sm uppercase tracking-widest">Available in</p>
+            <CountdownTimer />
+          </div>
+
+          <p className="text-lg text-gray-300 italic font-medium">
+            "সবুর করো জানু, সকালের সূর্য এই গল্পটা নিয়ে আসবে..."
+          </p>
+
+          <button
+            onClick={() => setShowLockedScreen(false)}
+            className="mt-8 text-sm text-gray-500 hover:text-white transition-colors underline"
+          >
+            আগের পাতায় ফিরে যাও
+          </button>
+
+          {/* Dev Tool: Hidden in bottom corner mostly */}
+          <button
+             onClick={handleDevTimeTravel}
+             className="fixed bottom-2 right-2 text-[10px] text-gray-800 hover:text-gray-600 bg-white/10 px-2 py-1 rounded"
+          >
+             Dev: +1 Day
+          </button>
+
+        </motion.div>
+      </div>
+    );
+  }
+
+  // --- Main Screen Render ---
   return (
     <div className={`relative min-h-screen flex items-center justify-center p-4 overflow-hidden bg-gradient-to-br ${currentData.bgGradient} transition-all duration-1000`}>
 
-      {/* Background Effects */}
       <BackgroundParticles theme={currentData.theme} />
 
-      {/* Music Toggle (Mockup) */}
+      {/* Music Toggle */}
       <div
         className="absolute top-6 right-6 z-20 p-3 bg-white/10 backdrop-blur-md rounded-full cursor-pointer hover:bg-white/20 transition-all border border-white/10"
         onClick={() => setIsMusicPlaying(!isMusicPlaying)}
@@ -249,10 +400,15 @@ const LoveJourney = () => {
           transition={{ duration: 0.5 }}
           className="relative z-10 w-full max-w-lg"
         >
-          <div className="bg-white/10 backdrop-blur-xl border border-white/20 shadow-2xl rounded-3xl overflow-hidden text-white">
+          <div className="bg-white/10 backdrop-blur-xl border border-white/20 shadow-2xl rounded-3xl overflow-hidden text-white relative">
+
+            {/* Day Badge */}
+            <div className="absolute top-4 left-4 bg-black/30 backdrop-blur-md px-3 py-1 rounded-full text-xs font-mono border border-white/10 text-white/70">
+              {currentStep === 0 ? 'INTRO' : `DAY ${currentStep}`}
+            </div>
 
             {/* Progress Bar */}
-            <div className="w-full bg-white/10 h-1.5">
+            <div className="w-full bg-white/10 h-1.5 absolute top-0 left-0">
               <motion.div
                 className="h-full bg-gradient-to-r from-pink-500 to-purple-500"
                 initial={{ width: `${((currentStep) / steps.length) * 100}%` }}
@@ -263,7 +419,7 @@ const LoveJourney = () => {
 
             <div className="p-8 md:p-12 flex flex-col items-center text-center min-h-[500px] justify-between">
 
-              <div className="relative">
+              <div className="relative mt-6">
                 <motion.div
                   className="bg-white/10 p-6 rounded-full shadow-[0_0_30px_rgba(255,255,255,0.1)] mb-6 ring-1 ring-white/20"
                   animate={{ y: [0, -10, 0] }}
@@ -271,7 +427,6 @@ const LoveJourney = () => {
                 >
                   {currentData.icon}
                 </motion.div>
-                {/* Glow effect behind icon */}
                 <div className="absolute inset-0 bg-white/20 blur-3xl -z-10 rounded-full"></div>
               </div>
 
@@ -291,8 +446,8 @@ const LoveJourney = () => {
               </div>
 
               <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={handleNext}
                 className={`group relative mt-8 w-full py-4 rounded-xl font-bold text-lg shadow-xl overflow-hidden transition-all duration-300
                   ${currentData.theme === 'dark'
@@ -301,20 +456,22 @@ const LoveJourney = () => {
                   }`}
               >
                 <span className="relative z-10 flex items-center justify-center gap-2 text-white">
-                  {currentData.btnText}
-                  {currentStep < steps.length - 1 ? <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" /> : <Sparkles className="w-5 h-5 animate-spin" />}
+                  {/* Logic for Button Text: If next step is locked, show "See Tomorrow" */}
+                  {(currentStep + 1) > unlockedDays ? (
+                    <>
+                      আগামীকালের জন্য অপেক্ষা <Clock className="w-5 h-5" />
+                    </>
+                  ) : (
+                    <>
+                      {currentData.btnText}
+                      {currentStep < steps.length - 1 ? <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" /> : <Sparkles className="w-5 h-5 animate-spin" />}
+                    </>
+                  )}
                 </span>
 
-                {/* Button Shine Effect */}
                 <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-12" />
               </motion.button>
 
-              <div className="mt-6 flex items-center gap-2 text-xs text-white/40 font-mono tracking-widest">
-                <span>EPISODE</span>
-                <span>{String(currentStep + 1).padStart(2, '0')}</span>
-                <span>/</span>
-                <span>{String(steps.length).padStart(2, '0')}</span>
-              </div>
             </div>
           </div>
         </motion.div>
